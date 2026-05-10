@@ -65,7 +65,7 @@ resize();
 
 const $ = id => document.getElementById(id);
 const screens = {title:$('title'),menu:$('menu'),upgrade:$('upgrade')};
-const hud=$('hud'), augOverlay=$('augmentOverlay'), over=$('gameover');
+const hud=$('hud'), augOverlay=$('augmentOverlay'), over=$('gameover'), joystick=$('joystick'), joyKnob=$('joyKnob');
 
 const SAVE_KEY_PREFIX='ammang_balance_v2_';
 let profile=null, saveKey='';
@@ -100,6 +100,7 @@ function load(nick,code){
 function show(name){
   Object.values(screens).forEach(s=>s.classList.add('hidden'));
   hud.classList.add('hidden'); augOverlay.classList.add('hidden'); over.classList.add('hidden');
+  if(joystick) joystick.classList.toggle('hidden', name!=='game');
   if(name==='game') hud.classList.remove('hidden');
   else screens[name].classList.remove('hidden');
 }
@@ -1098,17 +1099,78 @@ function endGame(clear){
 }
 
 /* ================= Input ================= */
+function setJoyKnob(dx=0,dy=0){
+  if(!joyKnob) return;
+  joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+}
+function setInputDirFromDelta(dx, maxR){
+  if(!game) return;
+  const dead = maxR * 0.16;
+  if(Math.abs(dx) < dead) game.input.dir = 0;
+  else game.input.dir = Math.max(-1, Math.min(1, dx / maxR));
+}
+function resetJoystick(){
+  if(game){ game.input.down=false; game.input.dir=0; }
+  setJoyKnob(0,0);
+}
+if(joystick){
+  const maxR=38;
+  let joyActive=false;
+  let activeId=null;
+  function joyPos(ev){
+    const rect=joystick.getBoundingClientRect();
+    const cx=rect.left+rect.width/2;
+    const cy=rect.top+rect.height/2;
+    let dx=ev.clientX-cx;
+    let dy=ev.clientY-cy;
+    const len=Math.hypot(dx,dy);
+    if(len>maxR){ dx=dx/len*maxR; dy=dy/len*maxR; }
+    return {dx,dy};
+  }
+  joystick.addEventListener('pointerdown',e=>{
+    if(!game) return;
+    resumeAudio();
+    e.preventDefault();
+    e.stopPropagation();
+    joyActive=true;
+    activeId=e.pointerId;
+    joystick.setPointerCapture?.(e.pointerId);
+    game.input.down=true;
+    const p=joyPos(e);
+    setJoyKnob(p.dx,p.dy);
+    setInputDirFromDelta(p.dx,maxR);
+  });
+  joystick.addEventListener('pointermove',e=>{
+    if(!game||!joyActive||e.pointerId!==activeId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const p=joyPos(e);
+    setJoyKnob(p.dx,p.dy);
+    setInputDirFromDelta(p.dx,maxR);
+  });
+  joystick.addEventListener('pointerup',e=>{
+    if(e.pointerId!==activeId) return;
+    joyActive=false; activeId=null; resetJoystick();
+  });
+  joystick.addEventListener('pointercancel',()=>{ joyActive=false; activeId=null; resetJoystick(); });
+}
+
+// 조이스틱이 안 먹는 브라우저용 백업: 화면 좌/우 하단 터치
 canvas.addEventListener('pointerdown',e=>{
   if(!game)return;
+  if(joystick && !joystick.classList.contains('hidden')){
+    const r=joystick.getBoundingClientRect();
+    if(e.clientX>=r.left-12 && e.clientX<=r.right+12 && e.clientY>=r.top-12 && e.clientY<=r.bottom+12) return;
+  }
   game.input.down=true;
-  game.input.dir = e.clientX < innerWidth/2 ? -1 : 1;
+  game.input.dir = e.clientX < window.innerWidth/2 ? -1 : 1;
 });
 canvas.addEventListener('pointermove',e=>{
   if(!game||!game.input.down)return;
-  game.input.dir = e.clientX < innerWidth/2 ? -1 : 1;
+  game.input.dir = e.clientX < window.innerWidth/2 ? -1 : 1;
 });
-canvas.addEventListener('pointerup',()=>{ if(game){ game.input.down=false; game.input.dir=0; } });
-canvas.addEventListener('pointercancel',()=>{ if(game){ game.input.down=false; game.input.dir=0; } });
+canvas.addEventListener('pointerup',resetJoystick);
+canvas.addEventListener('pointercancel',resetJoystick);
 
 const keys={left:false,right:false};
 function syncKeyDir(){

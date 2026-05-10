@@ -192,3 +192,41 @@ html, body {
 #hud{z-index:5 !important; pointer-events:none !important;}
 .screen,.modal,#augmentOverlay,#gameover{z-index:20 !important;}
 button,.iconBtn{pointer-events:auto !important;}
+
+
+/* V39 mobile joystick */
+#joystick{
+  position:fixed !important;
+  left:calc(50% - var(--game-w) / 2 + 34px) !important;
+  bottom:calc(50% - var(--game-h) / 2 + 34px) !important;
+  width:122px !important;
+  height:122px !important;
+  z-index:12 !important;
+  pointer-events:auto !important;
+  touch-action:none !important;
+  opacity:.78;
+}
+#joyBase{
+  position:absolute;
+  inset:0;
+  border:3px solid rgba(255,255,255,.72);
+  border-radius:50%;
+  background:rgba(15,20,30,.22);
+  box-shadow:0 0 0 2px rgba(0,0,0,.22), inset 0 0 18px rgba(255,255,255,.08);
+  backdrop-filter:blur(1px);
+}
+#joyKnob{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:48px;
+  height:48px;
+  margin-left:-24px;
+  margin-top:-24px;
+  border-radius:50%;
+  background:rgba(255,255,255,.82);
+  box-shadow:0 3px 0 rgba(0,0,0,.28), inset 0 -5px 0 rgba(0,0,0,.12);
+}
+@media (min-width: 700px){
+  #joystick{ opacity:.45; }
+}
