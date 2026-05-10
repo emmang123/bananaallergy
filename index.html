@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <title>앰망진창 밸런스 2D v2</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game"></canvas>
+
+    <div id="hud" class="hidden">
+      <div class="topbar">
+        <button id="pauseBtn" class="iconBtn">Ⅱ</button>
+        <div class="scoreBox">
+          <div class="label">점수</div>
+          <div id="score">000000</div>
+        </div>
+        <div class="wallet">
+          <span>💎</span><span id="dia">0</span>
+        </div>
+      </div>
+      <div class="leftProgress">
+        <div id="progressFill"></div>
+        <div id="progressPlayer"></div>
+        <div class="mark" style="top:25%"></div>
+        <div class="mark" style="top:50%"></div>
+        <div class="mark" style="top:75%"></div>
+        <div class="mark boss" style="top:4%"></div>
+      </div>
+      <div id="runStats"></div>
+    </div>
+
+    <div id="title" class="screen">
+      <h1>앰망진창<br/>밸런스 테스트</h1>
+      <p class="sub">2D 밸런스 체크용 · 4섹션 / 울타리 / 상자 / 증강</p>
+      <input id="nick" placeholder="닉네임" value="tester" />
+      <input id="code" placeholder="코드" value="0000" />
+      <button id="loginBtn">로그인 / 불러오기</button>
+      <button id="newBtn" class="secondary">새로 시작</button>
+    </div>
+
+    <div id="menu" class="screen hidden">
+      <h2>메인</h2>
+      <div class="money">💎 <span id="menuDia">0</span></div>
+      <button id="playBtn" type="button" onclick="return window.forceStartGame(event)">게임하기</button>
+      <button id="upgradeBtn">강화</button>
+      <button id="saveBtn" class="secondary">저장하기</button>
+      <button id="resetBtn" class="danger">저장 초기화</button>
+    </div>
+
+    <div id="upgrade" class="screen hidden">
+      <h2>강화 선택</h2>
+      <div class="money">💎 <span id="upDia">0</span></div>
+      <div id="upgradeGrid"></div>
+      <button id="backMenu1" class="secondary">뒤로</button>
+    </div>
+
+    <div id="augmentOverlay" class="modal hidden">
+      <h2 id="augTitle">증강 선택</h2>
+      <div id="augCards" class="cards"></div>
+    </div>
+
+    <div id="gameover" class="modal hidden">
+      <h2 id="overTitle">게임오버</h2>
+      <p id="overText"></p>
+      <button id="toMenuBtn">메인으로</button>
+      <button id="retryBtn" class="secondary">다시하기</button>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
