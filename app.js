@@ -6,15 +6,35 @@ const ctx = canvas.getContext('2d');
 let W=0,H=0,DPR=1;
 function resize(){
   DPR=Math.min((window.devicePixelRatio||1),2);
-  const maxCssW = Math.min(innerWidth, innerHeight * 9 / 16);
-  const cssW = maxCssW;
-  const cssH = cssW * 16 / 9;
-  W=Math.floor(cssW*DPR); H=Math.floor(cssH*DPR);
-  canvas.width=W; canvas.height=H;
+
+  // iOS/Kakao/Chrome in-app browser 대응: innerWidth 대신 visualViewport 우선.
+  const vw = Math.floor((window.visualViewport?.width || document.documentElement.clientWidth || window.innerWidth));
+  const vh = Math.floor((window.visualViewport?.height || document.documentElement.clientHeight || window.innerHeight));
+
+  // 9:16 세로 게임 화면을 현재 보이는 viewport 안에 무조건 맞춘다.
+  let cssW = Math.min(vw, vh * 9 / 16);
+  let cssH = cssW * 16 / 9;
+  if(cssH > vh){
+    cssH = vh;
+    cssW = cssH * 9 / 16;
+  }
+
+  cssW = Math.floor(cssW);
+  cssH = Math.floor(cssH);
+
+  W=Math.floor(cssW*DPR);
+  H=Math.floor(cssH*DPR);
+  canvas.width=W;
+  canvas.height=H;
   canvas.style.width=cssW+'px';
   canvas.style.height=cssH+'px';
+
+  document.documentElement.style.setProperty('--game-w', cssW+'px');
+  document.documentElement.style.setProperty('--game-h', cssH+'px');
 }
-addEventListener('resize',resize); resize();
+addEventListener('resize',resize);
+if(window.visualViewport) window.visualViewport.addEventListener('resize',resize);
+resize();
 
 const $ = id => document.getElementById(id);
 const screens = {title:$('title'),menu:$('menu'),upgrade:$('upgrade')};
