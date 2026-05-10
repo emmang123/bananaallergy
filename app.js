@@ -7,11 +7,31 @@ let W=0,H=0,DPR=1;
 function resize(){
   DPR=Math.min((window.devicePixelRatio||1),2);
 
-  // iOS/Kakao/Chrome in-app browser 대응: innerWidth 대신 visualViewport 우선.
-  const vw = Math.floor((window.visualViewport?.width || document.documentElement.clientWidth || window.innerWidth));
-  const vh = Math.floor((window.visualViewport?.height || document.documentElement.clientHeight || window.innerHeight));
+  // Mobile hard-fit:
+  // 여러 브라우저가 서로 다른 값을 주므로, 가장 작은 보이는 값을 우선 사용한다.
+  const vv = window.visualViewport;
+  const candW = [
+    vv?.width,
+    document.documentElement.clientWidth,
+    window.innerWidth,
+    screen?.width
+  ].filter(Boolean);
+  const candH = [
+    vv?.height,
+    document.documentElement.clientHeight,
+    window.innerHeight,
+    screen?.height
+  ].filter(Boolean);
 
-  // 9:16 세로 게임 화면을 현재 보이는 viewport 안에 무조건 맞춘다.
+  let vw = Math.floor(Math.min(...candW));
+  let vh = Math.floor(Math.min(...candH));
+
+  // iPhone/카톡 인앱 안전 여백. 잘림보다 작은 화면을 우선한다.
+  const safeX = 2;
+  const safeY = 18;
+  vw = Math.max(1, vw - safeX);
+  vh = Math.max(1, vh - safeY);
+
   let cssW = Math.min(vw, vh * 9 / 16);
   let cssH = cssW * 16 / 9;
   if(cssH > vh){
@@ -31,9 +51,16 @@ function resize(){
 
   document.documentElement.style.setProperty('--game-w', cssW+'px');
   document.documentElement.style.setProperty('--game-h', cssH+'px');
+  document.body.style.width='100%';
+  document.body.style.height='100%';
 }
 addEventListener('resize',resize);
 if(window.visualViewport) window.visualViewport.addEventListener('resize',resize);
+addEventListener('orientationchange',()=>setTimeout(resize,120));
+addEventListener('pageshow',()=>setTimeout(resize,60));
+if(window.visualViewport){
+  visualViewport.addEventListener('scroll',resize);
+}
 resize();
 
 const $ = id => document.getElementById(id);
@@ -187,6 +214,97 @@ let game=null;
 let rafId=0;
 let runToken=0;
 
+
+/* ================= SFX ================= */
+let audioCtx=null;
+let sfxEnabled=true;
+function initAudio(){
+  if(audioCtx) return;
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC) return;
+  audioCtx=new AC();
+}
+function resumeAudio(){
+  initAudio();
+  if(audioCtx && audioCtx.state==='suspended') audioCtx.resume();
+}
+function sfxGain(vol=0.15){
+  if(!audioCtx || !sfxEnabled) return null;
+  const g=audioCtx.createGain();
+  g.gain.value=vol;
+  g.connect(audioCtx.destination);
+  return g;
+}
+function tone(freq=440,dur=.08,type='sine',vol=.12,slideTo=null){
+  if(!audioCtx || !sfxEnabled) return;
+  const now=audioCtx.currentTime;
+  const o=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
+  o.type=type;
+  o.frequency.setValueAtTime(freq,now);
+  if(slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20,slideTo),now+dur);
+  g.gain.setValueAtTime(0.0001,now);
+  g.gain.exponentialRampToValueAtTime(vol,now+.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,now+dur);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(now); o.stop(now+dur+.02);
+}
+function noise(dur=.08,vol=.12,filterFreq=900,type='lowpass'){
+  if(!audioCtx || !sfxEnabled) return;
+  const now=audioCtx.currentTime;
+  const len=Math.max(1,Math.floor(audioCtx.sampleRate*dur));
+  const buffer=audioCtx.createBuffer(1,len,audioCtx.sampleRate);
+  const data=buffer.getChannelData(0);
+  for(let i=0;i<len;i++) data[i]=(Math.random()*2-1)*(1-i/len);
+  const src=audioCtx.createBufferSource();
+  src.buffer=buffer;
+  const filter=audioCtx.createBiquadFilter();
+  filter.type=type; filter.frequency.value=filterFreq;
+  const g=audioCtx.createGain();
+  g.gain.setValueAtTime(vol,now);
+  g.gain.exponentialRampToValueAtTime(0.0001,now+dur);
+  src.connect(filter); filter.connect(g); g.connect(audioCtx.destination);
+  src.start(now); src.stop(now+dur+.02);
+}
+function sfx(name, power=1){
+  if(!audioCtx || !sfxEnabled) return;
+  power=Math.max(.4,Math.min(2,power));
+  switch(name){
+    case 'start':
+      tone(392,.07,'square',.08); setTimeout(()=>tone(587,.08,'square',.08),70); setTimeout(()=>tone(784,.12,'square',.09),135); break;
+    case 'banana':
+      tone(760,.045,'triangle',.035,980); noise(.025,.015,2600,'highpass'); break;
+    case 'bananaHit':
+      tone(520,.04,'square',.04,260); noise(.035,.035,1200,'bandpass'); break;
+    case 'poopCharge':
+      tone(170,.06,'sawtooth',.035,230); noise(.035,.018,420,'lowpass'); break;
+    case 'poopFire':
+      tone(130,.08,'sawtooth',.07,90); noise(.09,.07,520,'lowpass'); break;
+    case 'poopHit':
+      tone(95,.08,'square',.06,55); noise(.12,.08,360,'lowpass'); break;
+    case 'chest':
+      tone(659,.06,'triangle',.07); setTimeout(()=>tone(988,.12,'triangle',.08),55); noise(.06,.025,3200,'highpass'); break;
+    case 'gate':
+      tone(440,.06,'square',.06); setTimeout(()=>tone(660,.08,'square',.05),50); break;
+    case 'augmentCommon':
+      tone(420,.08,'triangle',.07); setTimeout(()=>tone(560,.08,'triangle',.06),80); break;
+    case 'augmentGold':
+      tone(523,.07,'triangle',.08); setTimeout(()=>tone(784,.07,'triangle',.08),70); setTimeout(()=>tone(1046,.12,'triangle',.08),140); noise(.12,.035,4200,'highpass'); break;
+    case 'augmentPrism':
+      tone(392,.06,'sine',.07); setTimeout(()=>tone(587,.06,'sine',.07),55); setTimeout(()=>tone(880,.08,'sine',.08),110); setTimeout(()=>tone(1318,.18,'sine',.08),170); noise(.18,.04,5000,'highpass'); break;
+    case 'hurt':
+      tone(180,.14,'sawtooth',.09,80); noise(.08,.05,700,'lowpass'); break;
+    case 'kill':
+      tone(260,.05,'square',.05,180); noise(.06,.05,900,'bandpass'); break;
+    case 'boss':
+      tone(100,.18,'sawtooth',.11,65); setTimeout(()=>tone(90,.18,'sawtooth',.10,55),160); break;
+    case 'gameover':
+      tone(300,.18,'sawtooth',.08,120); setTimeout(()=>tone(190,.22,'sawtooth',.08,70),160); break;
+    case 'clear':
+      tone(523,.08,'square',.08); setTimeout(()=>tone(659,.08,'square',.08),80); setTimeout(()=>tone(784,.08,'square',.08),160); setTimeout(()=>tone(1046,.18,'square',.09),240); break;
+  }
+}
+
 function newStats(){
   const u=profile.upgrades;
   const s = {
@@ -236,6 +354,8 @@ function newStats(){
   return s;
 }
 function startGame(){
+  resumeAudio();
+  sfx('start');
   if(!profile) load('tester','0000');
   if(rafId) cancelAnimationFrame(rafId);
   runToken++;
@@ -363,14 +483,17 @@ function spawnMobs(sec,count){
   }
 }
 function spawnMini(sec,idx){
+  sfx('boss');
   const hp=[[167,260,400],[900,1300,1900],[2800,4200,6000],[7000,9500,12000]][sec][idx];
   game.enemies.push(makeEnemy('mini', W/2, -120*DPR, hp, armorFor(sec)+10, sec, idx));
 }
 function spawnSectionBoss(sec){
+  sfx('boss');
   const hp=[1300,4000,8000][sec];
   game.enemies.push(makeEnemy('boss', W/2, -140*DPR, hp, armorFor(sec)+15, sec));
 }
 function spawnFinalBoss(sec){
+  sfx('boss');
   game.finalBossSpawned=true;
   game.enemies.push(makeEnemy('final', W/2, -180*DPR, 20000, 100, sec));
 }
@@ -506,6 +629,7 @@ function applyFenceReward(opt, sec){
     case 'move': s.moveSpeed*=1+.03*scale; break;
   }
 
+  sfx('gate');
   addText(textMap[opt.key]||opt.label, W/2, H*.55, '#ffec61');
   if(opt.key==='bananaDamage') addText('현재 바나나 '+Math.round(s.bananaDamage), W/2, H*.59, '#fff177');
 }
@@ -544,6 +668,7 @@ function chestRewardText(reward, sec){
   }
 }
 function applyChestReward(reward, sec){
+  sfx('chest');
   const s=game.stats, m=reward.star, scale=s.rewardScale;
   const hp=[25,50,85,140][sec]*m*scale;
   switch(reward.key){
@@ -566,6 +691,7 @@ function chooseAugment(){
   game.state='augment';
   const roll=Math.random();
   const tier=roll<.50?'common':roll<.90?'gold':'prism';
+  sfx(tier==='common'?'augmentCommon':tier==='gold'?'augmentGold':'augmentPrism');
   const pool=[...AUGS[tier]];
   const picks=[];
   while(picks.length<3 && pool.length){
@@ -576,7 +702,7 @@ function chooseAugment(){
   picks.forEach(aug=>{
     const div=document.createElement('div'); div.className='card '+tier;
     div.innerHTML=`<h3>${aug[0]}</h3><p>${aug[1]}</p><button>선택</button>`;
-    div.querySelector('button').onclick=()=>{ applyAug(aug); augOverlay.classList.add('hidden'); game.state='play'; game.last=performance.now(); rafId=requestAnimationFrame(loop); };
+    div.querySelector('button').onclick=()=>{ sfx('gate'); applyAug(aug); augOverlay.classList.add('hidden'); game.state='play'; game.last=performance.now(); rafId=requestAnimationFrame(loop); };
     cards.appendChild(div);
   });
   augOverlay.classList.remove('hidden');
@@ -676,10 +802,10 @@ function update(dt){
   // 똥 생성/발사
   if(s.poopUnlocked && !s.poopSealed){
     s.poopTimer-=dt;
-    if(s.poopTimer<=0){ s.poopTimer+=Math.max(1.2,s.poopCD); s.poopStored=Math.min(s.poopStored+1,s.poopMax); }
+    if(s.poopTimer<=0){ s.poopTimer+=Math.max(1.2,s.poopCD); const beforePoop=s.poopStored; s.poopStored=Math.min(s.poopStored+1,s.poopMax); if(s.poopStored>beforePoop) sfx('poopCharge'); }
     const target=findNearestEnemy(s.poopRange*H);
     if(target && s.poopStored>0){
-      const n=Math.min(s.poopStored, Math.max(0,s.poopMax)); s.poopStored=0;
+      const n=Math.min(s.poopStored, Math.max(0,s.poopMax)); if(n>0) sfx('poopFire', Math.min(2,n/3)); s.poopStored=0;
       for(let i=0;i<n;i++) firePoop(target,1, 0,false,i);
       if(s.poopMirror) for(let i=0;i<n;i++) firePoop(target,s.poopMirror, 0, true,i);
     }
@@ -867,6 +993,7 @@ function hitEnemy(e,p){
     if(s.poopArmorDebuff) e.debuffArmorPct=Math.max(e.debuffArmorPct||0,s.poopArmorDebuff);
   }
   e.hp-=dmg;
+  sfx(p.kind==='poop'?'poopHit':'bananaHit');
   // 같은 순간 여러 투사체가 맞으면 데미지 숫자가 겹쳐서 1발만 맞은 것처럼 보이는 문제 방지
   const dmgLabel = Math.round(dmg);
   const nowT = game.t;
@@ -888,10 +1015,11 @@ function killEnemy(e,source){
   if(e.dead) return;
   const s=game.stats;
   e.dead=true; s.kills++;
+  sfx('kill');
   if(s.killAS) s.bananaAS=Math.min((s.bananaASCap||7),s.bananaAS*1.0008);
   if(s.killBananaDamage) s.bananaDamage+=s.killBananaDamage;
   if(s.hpOn10Kills && s.kills%10===0){s.maxHp+=8;s.hp+=8;}
-  if(s.poopKillRefund && source==='poop') s.poopStored=Math.min(s.poopStored+1,s.poopMax);
+  if(s.poopKillRefund && source==='poop'){ const beforePoop=s.poopStored; s.poopStored=Math.min(s.poopStored+1,s.poopMax); if(s.poopStored>beforePoop) sfx('poopCharge'); }
   if(e.type==='final'){
     endGame(true);
   } else if(e.type==='mob'){
@@ -905,7 +1033,7 @@ function collideEnemy(e){
   const s=game.stats;
   let dmg=e.hp;
   if(s.shield>0){ const block=Math.min(s.shield,dmg); s.shield-=block; dmg-=block; }
-  if(dmg>0){ s.hp-=dmg; s.noHitTime=0; }
+  if(dmg>0){ s.hp-=dmg; s.noHitTime=0; sfx('hurt'); }
 
   const survived = s.hp > 0 || s.deathSave;
 
@@ -952,6 +1080,7 @@ function addText(txt,x,y,color='#fff',life=.9,popup=null){
 }
 function endGame(clear){
   if(game.over)return; game.over=true; game.state='over';
+  sfx(clear?'clear':'gameover');
   const s=game.stats;
   let dia=0;
   if(clear) dia=100;
@@ -1525,6 +1654,7 @@ window.resizeGameCanvas = resize;
 
 // V23 hard start patch
 window.forceStartGame = function(ev){
+  resumeAudio();
   if(ev){ ev.preventDefault(); ev.stopPropagation(); }
   if(window.__forceStartLock) return false;
   window.__forceStartLock = true;
@@ -1574,3 +1704,16 @@ window.forceStartGame = function(ev){
   setTimeout(bind, 500);
 })();
 
+
+
+function debugViewportText(){
+  if(!location.search.includes('debug=1')) return;
+  let el=document.getElementById('vpDebug');
+  if(!el){ el=document.createElement('div'); el.id='vpDebug'; document.body.appendChild(el); }
+  el.style.cssText='position:fixed;left:4px;bottom:4px;z-index:99999;background:#000;color:#0f0;font:10px monospace;padding:3px;white-space:pre;';
+  el.textContent=`vw:${innerWidth} vh:${innerHeight}\nclient:${document.documentElement.clientWidth}x${document.documentElement.clientHeight}\nvv:${visualViewport?.width}x${visualViewport?.height}\ngame:${getComputedStyle(document.documentElement).getPropertyValue('--game-w')}x${getComputedStyle(document.documentElement).getPropertyValue('--game-h')}`;
+}
+setInterval(debugViewportText,500);
+
+addEventListener('pointerdown',resumeAudio,{once:false});
+addEventListener('touchstart',resumeAudio,{once:false});

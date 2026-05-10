@@ -132,3 +132,63 @@ html, body {
   max-height:100svh !important;
   overflow:hidden !important;
 }
+
+
+/* V37 HARD MOBILE FIT — overrides every previous layout rule */
+html, body {
+  margin:0 !important;
+  padding:0 !important;
+  width:100% !important;
+  min-width:0 !important;
+  height:100% !important;
+  min-height:100% !important;
+  overflow:hidden !important;
+  background:#071012 !important;
+  position:fixed !important;
+  inset:0 !important;
+  overscroll-behavior:none !important;
+  -webkit-text-size-adjust:100% !important;
+}
+#app{
+  position:fixed !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  max-width:none !important;
+  max-height:none !important;
+  overflow:hidden !important;
+  display:block !important;
+  background:#071012 !important;
+}
+#game{
+  position:fixed !important;
+  left:50% !important;
+  top:50% !important;
+  width:var(--game-w) !important;
+  height:var(--game-h) !important;
+  max-width:none !important;
+  max-height:none !important;
+  transform:translate(-50%,-50%) !important;
+  display:block !important;
+  margin:0 !important;
+  padding:0 !important;
+  z-index:1 !important;
+  border-radius:0 !important;
+}
+#hud, #augmentOverlay, #gameover,
+.screen, .modal {
+  position:fixed !important;
+  left:50% !important;
+  top:50% !important;
+  width:var(--game-w) !important;
+  height:var(--game-h) !important;
+  max-width:none !important;
+  max-height:none !important;
+  min-width:0 !important;
+  transform:translate(-50%,-50%) !important;
+  margin:0 !important;
+  overflow:hidden !important;
+}
+#hud{z-index:5 !important; pointer-events:none !important;}
+.screen,.modal,#augmentOverlay,#gameover{z-index:20 !important;}
+button,.iconBtn{pointer-events:auto !important;}
