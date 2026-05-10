@@ -100,7 +100,7 @@ const FINAL_BOSS_SLOW=28; // 최종보스 접근 중 느린 이동. 최종보스
 const AUGS = {
  common: [
   ['다섯 번째는 서비스','바나나 5번째 적중마다 고정 피해 +25', s=>{s.bananaEvery5Flat+=25}, ['banana']],
-  ['손목 스냅 장인','바나나 공격속도 +18%', s=>{s.bananaAS*=1.18}, ['banana']],
+  ['손목 스냅 장인','바나나 공격속도 +12%', s=>{s.bananaAS*=1.12}, ['banana']],
   ['껍질에 가시남','바나나 적중 시 고정 피해 +4', s=>{s.bananaFlatOnHit+=4}, ['banana']],
   ['어깨 풀렸다','바나나 사거리 +30%', s=>{s.bananaRange*=1.3}, ['banana','range']],
   ['하나 더 던져봐','바나나 투사체 +1', s=>{s.bananaCount+=1}, ['banana','projectile']],
@@ -179,7 +179,7 @@ function newStats(){
     section:0,
     bananaDamage:10 + (u.damage||0) + ((u.projectile||0)>=1?1:0),
     bananaAS:0.88 * (1+(u.atkspd||0)*.03),
-    bananaASCap:7,
+    bananaASCap:6.5,
     bananaTimer:0,
     bananaCount:1 + ((u.projectile||0)>=3?1:0),
     bananaRange:0.5 + ((u.projectile||0)>=2?.1:0),
@@ -355,7 +355,7 @@ function spawnFinalBoss(sec){
   game.enemies.push(makeEnemy('final', W/2, -180*DPR, 20000, 100, sec));
 }
 function makeEnemy(type,x,y,hp,armor,sec,idx=0){
-  return {type,x,y,hp,maxHp:hp,armor,sec,idx,r: type==='mob'?54*DPR:type==='mini'?58*DPR:type==='final'?92*DPR:72*DPR, dead:false, debuffArmorPct:0};
+  return {type,x,y,hp,maxHp:hp,armor,sec,idx,r: type==='mob'?54*DPR:type==='mini'?86*DPR:type==='final'?100*DPR:88*DPR, dead:false, debuffArmorPct:0};
 }
 function randomMobHP(sec, globalIndex=0){
   // 선형 체력 금지. 초반은 50~70으로 낮게 시작하고, 진행될수록 기하급수적으로 상승.
@@ -394,8 +394,8 @@ function rollFenceReward(sec){
   const hasPoopStorage = !!(s && s.poopMax > 0);
 
   const nonPoopTable=[
-    ['bananaDamage','바나나 피해',14],
-    ['bananaAS','바나나 속도',12],
+    ['bananaDamage','바나나 피해',16],
+    ['bananaAS','바나나 속도',9],
     ['bananaRange','사거리',9],
     ['hp','체력',24],
     ['move','이동속도',9]
@@ -407,8 +407,8 @@ function rollFenceReward(sec){
 
   const fullTable=[
     // 똥 저장 +1을 먹은 뒤에만 다른 똥 관련 울타리가 등장한다.
-    ['bananaDamage','바나나 피해',14],
-    ['bananaAS','바나나 속도',12],
+    ['bananaDamage','바나나 피해',16],
+    ['bananaAS','바나나 속도',9],
     ['bananaRange','사거리',9],
     ['poopDamage','똥 피해',12],
     ['poopCD','똥 쿨',10],
@@ -439,7 +439,7 @@ function fenceRewardDisplay(opt, sec){
   const hpVals=[8,20,40,75];
   switch(opt.key){
     case 'bananaDamage': return ['바나나 피해','+1'];
-    case 'bananaAS': return ['바나나 공속','+2%'];
+    case 'bananaAS': return ['바나나 공속','+1.2%'];
     case 'bananaRange': return ['사거리','+3%'];
     case 'poopDamage': return ['똥 피해','+2'];
     case 'poopMax': return ['똥 저장','+1'];
@@ -456,7 +456,7 @@ function applyFenceReward(opt, sec){
   const hpVals=[8,20,40,75];
   const textMap={
     bananaDamage:`바나나 피해 +${Math.round(1*scale)}`,
-    bananaAS:`바나나 공속 +${(2*scale).toFixed(1)}%`,
+    bananaAS:`바나나 공속 +${(1.2*scale).toFixed(1)}%`,
     bananaRange:`사거리 +${(3*scale).toFixed(0)}%`,
     poopDamage:`똥 피해 +${Math.round(2*scale)}`,
     poopMax:`똥 저장 +1`,
@@ -471,7 +471,7 @@ function applyFenceReward(opt, sec){
 
   switch(opt.key){
     case 'bananaDamage': s.bananaDamage+=1*scale; break;
-    case 'bananaAS': s.bananaAS*=1+.02*scale; break;
+    case 'bananaAS': s.bananaAS*=1+.012*scale; break;
     case 'bananaRange': s.bananaRange*=1+.03*scale; break;
     case 'poopDamage': s.poopUnlocked=true; s.poopDamage+=2*scale; break;
     case 'poopMax': s.poopUnlocked=true; s.poopMax+=1; s.poopTimer=Math.max(s.poopTimer||0, s.poopCD||4); break;
@@ -507,7 +507,7 @@ function chestRewardText(reward, sec){
   const hpVals = [25,50,85,140];
   switch(reward.key){
     case 'bananaDamage': return `바나나 피해 +${3*m}`;
-    case 'bananaAS': return `바나나 공속 +${6*m}%`;
+    case 'bananaAS': return `바나나 공속 +${4*m}%`;
     case 'bananaRange': return `사거리 +${7*m}%`;
     case 'flatPen': return `방관 +${2*m}`;
     case 'percentPen': return `%방관 +${(1*m).toFixed(1)}%`;
@@ -528,7 +528,7 @@ function applyChestReward(reward, sec){
   const hp=[25,50,85,140][sec]*m*scale;
   switch(reward.key){
     case 'bananaDamage': s.bananaDamage+=3*m*scale; break;
-    case 'bananaAS': s.bananaAS*=1+.06*m*scale; break;
+    case 'bananaAS': s.bananaAS*=1+.04*m*scale; break;
     case 'bananaRange': s.bananaRange*=1+.07*m*scale; break;    case 'flatPen': s.flatPen+=3*m*scale; break;
     case 'percentPen': s.percentPen=Math.min(s.percentPen+.015*m*scale,.45); break;
     case 'poopDamage': s.poopUnlocked=true; s.poopDamage+=5*m*scale; break;
@@ -660,8 +660,8 @@ function update(dt){
     const target=findNearestEnemy(s.poopRange*H);
     if(target && s.poopStored>0){
       const n=Math.min(s.poopStored, Math.max(0,s.poopMax)); s.poopStored=0;
-      for(let i=0;i<n;i++) firePoop(target,1, i*.045,false,i);
-      if(s.poopMirror) for(let i=0;i<n;i++) firePoop(target,s.poopMirror, i*.045, true,i);
+      for(let i=0;i<n;i++) firePoop(target,1, 0,false,i);
+      if(s.poopMirror) for(let i=0;i<n;i++) firePoop(target,s.poopMirror, 0, true,i);
     }
   }
 
@@ -680,14 +680,20 @@ function update(dt){
     if(p.delay){ p.delay-=dt; continue; }
     if(p.kind==='banana') p.y -= p.speed*dt;
     if(p.kind==='poop'){
-      if(p.target&&!p.target.dead){
+      if(!p.target || p.target.dead){
+        // 기존 타겟이 죽어도 바닥에 떨어지지 않게 즉시 다른 적을 찾는다.
+        p.target = findNearestEnemy(H*1.2);
+      }
+      if(p.target && !p.target.dead){
         const dx=p.target.x-p.x, dy=p.target.y-p.y, len=Math.hypot(dx,dy)||1;
-        // 살짝 휘어지는 호밍. 너무 요란하지 않게 포로발사기 느낌만 준다.
         const nx = -dy/len, ny = dx/len;
-        const wobble = Math.sin((game.t + (p.delay||0))*18) * (p.curve||0) * .018;
+        const wobble = Math.sin(game.t*18 + (p.slotIndex||0)) * (p.curve||0) * .012;
         p.x += (dx/len*p.speed + nx*wobble)*dt;
         p.y += (dy/len*p.speed + ny*wobble)*dt;
-      } else p.y -= p.speed*dt;
+      } else {
+        // 적이 아예 없을 때만 직진. 불발처럼 바닥에 떨어지는 연출 금지.
+        p.y -= p.speed*dt;
+      }
     }
     if(p.kind==='banana' && p.bornY !== undefined && (p.bornY - p.y) > p.range){
       p.dead = true;
@@ -706,9 +712,20 @@ function update(dt){
   // 충돌/상자/게이트
   for(const e of g.enemies){
     if(e.dead) continue;
-    if(e.y>g.player.y-30*DPR && Math.abs(e.x-g.player.x)<e.r+18*DPR){
-      collideEnemy(e);
+
+    if(e.type==='mob'){
+      // 잡몹은 좌/우로 피할 수 있다.
+      if(e.y>g.player.y-30*DPR && Math.abs(e.x-g.player.x)<e.r+18*DPR){
+        collideEnemy(e);
+      }
+    } else {
+      // 미니보스/중간보스/최종보스는 피할 수 없다.
+      // 시각적으로 옆 샛길이 있어도 지나치는 순간 무조건 충돌/몸빵 판정.
+      if(e.y>g.player.y-55*DPR){
+        collideEnemy(e);
+      }
     }
+
     if(e.y>H+100*DPR) e.dead=true;
   }
   g.enemies=g.enemies.filter(e=>!e.dead);
@@ -777,12 +794,13 @@ function firePoop(target,mul=1,delay=0,mirror=false,slotIndex=0){
     kind:'poop',
     x:pos.x,
     y:pos.y,
-    speed:380*DPR,
+    speed:410*DPR,
     r:11*DPR,
     target,
     mul,
-    delay,
-    curve:(Math.random()-.5)*42*DPR
+    delay:0,
+    slotIndex,
+    curve:(Math.random()-.5)*28*DPR
   });
 }
 function findNearestEnemy(rangePx){
